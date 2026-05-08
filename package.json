@@ -1,12 +1,13 @@
 {
-  "name": "socialflow-planner",
+  "name": "figRize",
   "private": true,
   "version": "0.0.0",
+  "main": "out/main/index.js",
   "type": "module",
   "scripts": {
-    "dev": "vite",
-    "build": "vite build",
-    "preview": "vite preview"
+    "dev": "electron-vite dev",
+    "build": "electron-vite build",
+    "preview": "electron-vite preview"
   },
   "dependencies": {
     "@google/genai": "^1.31.0",
@@ -18,6 +19,8 @@
   "devDependencies": {
     "@types/node": "^22.14.0",
     "@vitejs/plugin-react": "^5.0.0",
+    "electron": "^42.0.0",
+    "electron-vite": "^5.0.0",
     "typescript": "~5.8.2",
     "vite": "^6.2.0"
   }
