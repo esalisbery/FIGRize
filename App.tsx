@@ -49,6 +49,7 @@ const App: React.FC = () => {
   
   // Modal state
   const [selectedSlot, setSelectedSlot] = useState<{date: Date} | null>(null);
+  const [editingPost, setEditingPost] = useState<SocialPost | null>(null);
 
   const handlePrevWeek = () => setCurrentDate(subDays(currentDate, 7));
   const handleNextWeek = () => setCurrentDate(addDays(currentDate, 7));
@@ -61,8 +62,13 @@ const App: React.FC = () => {
     setIsModalOpen(true);
   };
 
-  const handleSavePost = (newPost: SocialPost) => {
-    setPosts([...posts, newPost]);
+  const handleSavePost = (savedPost: SocialPost) => {
+    setPosts(prev => {
+      const exists = prev.some(p => p.id === savedPost.id);
+      return exists
+        ? prev.map(p => p.id === savedPost.id ? savedPost : p)
+        : [...prev, savedPost];
+    });
   };
 
   const handleLoginSuccess = () => {
@@ -83,6 +89,21 @@ const App: React.FC = () => {
   const handleDisconnect = () => {
       setConnectedAccount(null);
       // Optional: remove FB from filters or leave it
+  };
+
+  const handleExport = () => {
+    const data = JSON.stringify(
+      posts.map(p => ({ ...p, date: p.date instanceof Date ? p.date.toISOString() : p.date })),
+      null,
+      2
+    );
+    const blob = new Blob([data], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `figRize-posts-${new Date().toISOString().split('T')[0]}.json`;
+    a.click();
+    URL.revokeObjectURL(url);
   };
 
   const togglePlatform = (p: Platform) => {
@@ -187,7 +208,7 @@ const App: React.FC = () => {
                         <span className="font-semibold">Connect Page</span>
                     </button>
                 )}
-                <button className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
+                <button onClick={handleExport} className="flex items-center gap-1.5 text-gray-500 hover:text-gray-800 px-2 py-1 rounded hover:bg-gray-100 transition-colors">
                     <Download size={14} />
                     <span>Export</span>
                 </button>
@@ -200,18 +221,20 @@ const App: React.FC = () => {
               currentDate={currentDate} 
               posts={posts} 
               onSlotClick={handleSlotClick}
-              onPostClick={(post) => alert(`Editing post: ${post.content}`)}
+              onPostClick={(post) => { setEditingPost(post); setIsModalOpen(true); }}
               filteredPlatforms={activePlatforms}
            />
         </main>
       </div>
 
-      <PostModal 
-        isOpen={isModalOpen} 
-        onClose={() => setIsModalOpen(false)}
+      <PostModal
+        isOpen={isModalOpen}
+        onClose={() => { setIsModalOpen(false); setEditingPost(null); }}
         onSave={handleSavePost}
         initialDate={selectedSlot?.date}
-        initialPlatform={connectedAccount ? Platform.Facebook : Platform.Facebook}
+        initialPlatform={Platform.Facebook}
+        // @ts-ignore
+        editingPost={editingPost}
       />
       
       <FacebookLoginPopup 
