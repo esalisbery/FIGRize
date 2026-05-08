@@ -1,0 +1,35 @@
+.headerRow {
+  background: rgba(13, 20, 36, 0.92);
+  backdrop-filter: blur(8px);
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+
+.todayBadge {
+  background: linear-gradient(135deg, #ff8c42, #f5a623);
+  color: #1a1206;
+  box-shadow: 0 4px 12px rgba(255, 140, 66, 0.4);
+}
+
+.bestTimeSlot {
+  background-color: rgba(255, 140, 66, 0.05);
+  border-top: 2px solid rgba(255, 140, 66, 0.25);
+}
+
+/* Post cards use CSS custom properties for runtime-computed top/height */
+.postCard {
+  top: var(--post-top);
+  height: var(--post-height);
+}
+
+.groupCard {
+  top: var(--post-top);
+  height: 44px;
+}
+
+/* Dropdown uses fixed positioning with runtime-computed coordinates */
+.dropdown {
+  top: var(--dropdown-top);
+  left: var(--dropdown-left);
+}

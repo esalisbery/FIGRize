@@ -1,0 +1,59 @@
+/* Feed card shell — authentic FB dark mode surface */
+.feedCard {
+  background: #242526;
+  border-radius: 0.75rem;
+  overflow: hidden;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.4);
+}
+
+/* Header text colours */
+.pageName {
+  color: #e4e6eb;
+}
+
+.metaText {
+  color: #b0b3b8;
+}
+
+/* Post body text */
+.bodyText {
+  color: #e4e6eb;
+}
+
+/* Empty-state placeholder */
+.emptyText {
+  color: #6c7894;
+}
+
+/* Engagement button */
+.engageBtn {
+  color: #b0b3b8;
+  border-radius: 4px;
+  padding: 4px 6px;
+  transition: color 0.15s, background 0.15s;
+}
+
+.engageBtn:hover {
+  color: #e4e6eb;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+/* Coloured-bg block — fixed square aspect ratio, text scales inside */
+.coloredBgBlock {
+  aspect-ratio: 1 / 1;
+  overflow: hidden;
+}
+
+/* Aspect-ratio wrappers that can't be expressed as Tailwind arbitrary values cleanly */
+.mediaBlock {
+  aspect-ratio: 4 / 5;
+  overflow: hidden;
+}
+
+/* Reel/Story phone frame */
+.reelFrame {
+  aspect-ratio: 9 / 16;
+  border-radius: 1.75rem;
+  background: #111;
+}

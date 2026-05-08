@@ -1,0 +1,9 @@
+/* Modal wrapper */
+.modalWrapper {
+  background: #18223a;
+}
+
+/* Inner content area */
+.modalBody {
+  background: #1d2842;
+}

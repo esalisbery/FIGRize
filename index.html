@@ -4,15 +4,57 @@
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
     <title>FIGRize</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap" rel="stylesheet">
     <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+      tailwind.config = {
+        theme: {
+          extend: {
+            colors: {
+              'app-bg':       '#0d1424',
+              'app-surface':  '#18223a',
+              'app-surface-2':'#1d2842',
+              'app-surface-3':'#223052',
+              'app-border':   '#2a3756',
+              'app-text':     '#e8ecf5',
+              'app-text-2':   '#a5b0c8',
+              'app-text-3':   '#6c7894',
+              'app-muted':    '#4d5874',
+              'app-orange':   '#ff8c42',
+              'app-orange-2': '#f5a623',
+              'app-teal':     '#3ec1a6',
+              'app-danger':   '#ff6b6b',
+            },
+            fontFamily: {
+              sans: ['Inter', 'system-ui', 'sans-serif'],
+              mono: ['JetBrains Mono', 'monospace'],
+            },
+          }
+        }
+      }
+    </script>
     <style>
-      ::-webkit-scrollbar { width: 8px; height: 8px; }
-      ::-webkit-scrollbar-track { background: #f1f1f1; }
-      ::-webkit-scrollbar-thumb { background: #c1c1c1; border-radius: 4px; }
-      ::-webkit-scrollbar-thumb:hover { background: #a8a8a8; }
+      body {
+        background-color: #0d1424;
+        background-image:
+          linear-gradient(rgba(120,140,180,0.06) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(120,140,180,0.06) 1px, transparent 1px),
+          radial-gradient(1200px 600px at 20% -10%, rgba(255,140,66,0.05), transparent 60%),
+          radial-gradient(900px 500px at 100% 100%, rgba(62,193,166,0.04), transparent 60%),
+          linear-gradient(180deg, #0d1424 0%, #0a101e 100%);
+        background-size: 32px 32px, 32px 32px, auto, auto, auto;
+        background-attachment: fixed;
+      }
+      ::-webkit-scrollbar { width: 6px; height: 6px; }
+      ::-webkit-scrollbar-track { background: transparent; }
+      ::-webkit-scrollbar-thumb { background: #1f2a44; border-radius: 3px; }
+      ::-webkit-scrollbar-thumb:hover { background: #2a3756; }
+      select option { background-color: #1d2842; color: #e8ecf5; }
     </style>
   </head>
-  <body class="bg-gray-50 text-slate-800 font-sans antialiased overflow-hidden">
+  <body class="text-app-text font-sans antialiased overflow-hidden">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

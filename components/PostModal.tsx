@@ -57,7 +57,18 @@ export const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSave, i
 
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const [mediaFile, setMediaFile] = useState<File | null>(null);
+  const [mediaPreviewUrl, setMediaPreviewUrl] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (mediaFile) {
+      const url = URL.createObjectURL(mediaFile);
+      setMediaPreviewUrl(url);
+      return () => URL.revokeObjectURL(url);
+    } else {
+      setMediaPreviewUrl(null);
+    }
+  }, [mediaFile]);
 
   const COMMON_EMOJIS = [
     '😀','😂','❤️','👍','🙏','🎉','🔥','✨','💪','🚀',
@@ -90,6 +101,7 @@ export const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSave, i
       setShowAiPrompt(false);
       setShowEmojiPicker(false);
       setMediaFile(null);
+      setMediaPreviewUrl(null);
       setSelectedBackground('none');
       setShowBackgroundPicker(false);
       setPostType('Feed');
@@ -103,16 +115,18 @@ export const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSave, i
     return 'text-3xl font-bold leading-snug';
   };
 
-  // Auto-resize textarea to fit content perfectly, allowing flex container to center it
+  // Auto-resize textarea to fit content. Only expand when there IS content —
+  // avoid setting height on first mount when scrollHeight may still be 0.
   useLayoutEffect(() => {
-    const isFacebook = platform === Platform.Facebook;
-    const isColoredBackground = isFacebook && postType === 'Feed' && selectedBackground !== 'none';
-    
-    if (isColoredBackground && textareaRef.current) {
-      // Reset height to auto to shrink if text was deleted
+    const isFb = platform === Platform.Facebook;
+    const isColored = isFb && postType === 'Feed' && selectedBackground !== 'none';
+    if (!isColored || !textareaRef.current) return;
+
+    if (content.length > 0) {
       textareaRef.current.style.height = 'auto';
-      // Set to scrollHeight to fit content
       textareaRef.current.style.height = `${textareaRef.current.scrollHeight}px`;
+    } else {
+      textareaRef.current.style.height = '';
     }
   }, [content, selectedBackground, platform, postType]);
 
@@ -154,13 +168,12 @@ export const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSave, i
 
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-black bg-opacity-50 backdrop-blur-sm p-4">
-      <div className="bg-white rounded-xl shadow-2xl w-full max-w-2xl overflow-hidden flex flex-col max-h-[90vh]">
+      <div className="bg-white rounded-xl shadow-2xl w-full max-w-4xl overflow-hidden flex flex-col" style={{ maxHeight: '92vh' }}>
+
         {/* Header */}
-        <div className="flex justify-between items-center p-4 border-b border-gray-100">
-          <h2 className="text-lg font-semibold text-gray-800 flex items-center gap-2">
-            <span className={`w-3 h-3 rounded-full ${
-                platform === Platform.Instagram ? 'bg-pink-500' : 'bg-blue-600'
-            }`}></span>
+        <div className="flex justify-between items-center px-5 py-3 border-b border-gray-100 flex-shrink-0">
+          <h2 className="text-base font-semibold text-gray-800 flex items-center gap-2">
+            <span className={`w-2.5 h-2.5 rounded-full ${platform === Platform.Instagram ? 'bg-pink-500' : 'bg-blue-600'}`}></span>
             {editingPost ? 'Edit Post' : 'New Post'}
           </h2>
           <button type="button" title="Close" onClick={onClose} className="text-gray-400 hover:text-gray-600">
@@ -168,329 +181,252 @@ export const PostModal: React.FC<PostModalProps> = ({ isOpen, onClose, onSave, i
           </button>
         </div>
 
-        {/* Scrollable Content */}
-        <div className="p-6 overflow-y-auto flex-1 custom-scrollbar">
-          
-          {/* Platform Selector */}
-          <div className="mb-6">
-            <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Select Profile</label>
-            <div className="flex gap-2 flex-wrap">
-              {Object.values(Platform).map((p) => (
-                <button
-                  key={p}
-                  onClick={() => setPlatform(p)}
-                  className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
-                    platform === p 
-                      ? 'bg-slate-800 text-white border-slate-800 shadow-md transform scale-105' 
-                      : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
-                  }`}
-                >
-                  {p}
-                </button>
-              ))}
-            </div>
-          </div>
+        {/* Two-column body */}
+        <div className="flex flex-1 overflow-hidden">
 
-          <div className="flex flex-col gap-4">
-              {/* Text Editor Area */}
-              <div className={`border rounded-xl overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-indigo-100 transition-all ${isOverLimit ? 'border-red-300 ring-2 ring-red-50' : 'border-gray-200'}`}>
-                
-                {isColoredBackground ? (
-                  // FB Background View: Flex container for perfect centering
-                  // Using h-[360px] to mimic typical FB square-ish preview
-                  <div className={`w-full h-[360px] flex items-center justify-center p-12 transition-colors duration-300 ${activeBg.class}`}>
-                    <textarea
-                      ref={textareaRef}
-                      value={content}
-                      onChange={(e) => setContent(e.target.value)}
-                      placeholder="What's on your mind?"
-                      rows={1}
-                      className={`w-full max-h-full bg-transparent ${getDynamicFontSize(content.length)} text-center resize-none outline-none overflow-hidden placeholder-white/60 tracking-wide caret-current ${activeBg.text}`}
-                      style={{ padding: 0 }} 
-                    />
-                  </div>
-                ) : (
-                  // Standard View
+          {/* LEFT: Content editor */}
+          <div className="flex-1 flex flex-col border-r border-gray-100 overflow-y-auto custom-scrollbar p-5 gap-4">
+
+            {/* Platform Selector */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Select Profile</label>
+              <div className="flex gap-2">
+                {Object.values(Platform).map((p) => (
+                  <button type="button" key={p} onClick={() => setPlatform(p)}
+                    className={`px-3 py-1.5 rounded-full text-xs font-medium transition-all border ${
+                      platform === p ? 'bg-slate-800 text-white border-slate-800 shadow-sm' : 'bg-white text-gray-600 border-gray-200 hover:bg-gray-50'
+                    }`}>
+                    {p}
+                  </button>
+                ))}
+              </div>
+            </div>
+
+            {/* Text Editor */}
+            <div className={`border rounded-xl overflow-hidden shadow-sm focus-within:ring-2 focus-within:ring-indigo-100 transition-all ${isOverLimit ? 'border-red-300 ring-2 ring-red-50' : 'border-gray-200'}`}>
+              {isColoredBackground ? (
+                <div className={`w-full h-56 flex items-center justify-center p-8 ${activeBg.class}`}>
                   <textarea
+                    ref={textareaRef}
                     value={content}
                     onChange={(e) => setContent(e.target.value)}
                     placeholder="What's on your mind?"
-                    className="w-full bg-white text-gray-800 text-sm h-48 p-4 resize-none outline-none"
+                    rows={1}
+                    className={`w-full bg-transparent ${getDynamicFontSize(content.length)} text-center resize-none outline-none overflow-y-hidden tracking-wide placeholder:text-white/50`}
+                    style={{ padding: 0, color: '#ffffff', caretColor: '#ffffff' }}
                   />
-                )}
-                
-                {/* Editor Toolbar */}
-                <div className="bg-white border-t border-gray-100 p-2 flex items-center justify-between relative z-10">
-                   <div className="flex items-center gap-1">
-                      <div className="relative">
-                        <button
-                          type="button"
-                          title="Insert emoji"
-                          onClick={() => setShowEmojiPicker(prev => !prev)}
-                          className="p-2 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors"
-                        >
-                          <Smile size={18} />
-                        </button>
-                        {showEmojiPicker && (
-                          <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-50 w-56">
-                            <div className="grid grid-cols-10 gap-0.5">
-                              {COMMON_EMOJIS.map(emoji => (
-                                <button
-                                  type="button"
-                                  key={emoji}
-                                  title={emoji}
-                                  onClick={() => insertEmoji(emoji)}
-                                  className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 rounded text-base"
-                                >
-                                  {emoji}
-                                </button>
-                              ))}
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                      
-                      {/* Facebook Background Toggle */}
-                      {isFacebook && postType === 'Feed' && (
-                        <div className="relative">
-                            
-                             {/* Floating Tooltip/Warning - Only show if over limit */}
-                             {isOverLimit && (
-                                <div className="absolute bottom-full left-0 mb-3 w-64 p-3 bg-gray-800 text-white text-xs rounded-lg shadow-xl animate-in fade-in slide-in-from-bottom-2 pointer-events-none z-50">
-                                    <h4 className="font-bold mb-1.5 text-red-300 flex items-center gap-1.5">
-                                        <AlertCircle size={12} />
-                                        Limit Exceeded
-                                    </h4>
-                                    <ul className="space-y-1 text-gray-300">
-                                        <li className="text-red-200 font-bold">
-                                            - Maximum {FB_BG_CHAR_LIMIT} characters allowed
-                                        </li>
-                                        <li>- Exclusive to Facebook Pages</li>
-                                        <li>- Limited to Feed posts (Text only)</li>
-                                    </ul>
-                                     {/* Arrow */}
-                                     <div className="absolute top-full left-3 -mt-1 border-4 border-transparent border-t-gray-800"></div>
-                                </div>
-                             )}
-
-                            <button 
-                                onClick={() => setShowBackgroundPicker(!showBackgroundPicker)}
-                                className={`p-2 rounded-lg transition-colors flex items-center gap-1 ${
-                                    showBackgroundPicker || isColoredBackground
-                                    ? 'text-transparent bg-clip-text bg-gradient-to-r from-pink-500 to-violet-500 font-bold bg-indigo-50' 
-                                    : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'
-                                }`}
-                                title="Background Color"
-                            >
-                                <Type size={18} className={showBackgroundPicker || isColoredBackground ? 'text-indigo-600' : ''} />
-                            </button>
-                        </div>
-                      )}
-
-                      <button 
-                        onClick={() => setShowAiPrompt(!showAiPrompt)}
-                        className={`ml-2 flex items-center gap-1.5 text-xs font-medium px-2 py-1.5 rounded-lg transition-colors ${
-                            showAiPrompt ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'
-                        }`}
-                      >
-                        <Sparkles size={14} />
-                        AI Assist
-                      </button>
-                   </div>
-                   
-                   <span className={`text-xs font-medium transition-colors ${
-                       isOverLimit 
-                         ? 'text-red-600 font-bold' 
-                         : 'text-gray-400'
-                   }`}>
-                      {content.length} {isColoredBackground ? `/ ${FB_BG_CHAR_LIMIT}` : ''} chars
-                   </span>
                 </div>
-
-                {/* Color Picker Slide-out */}
-                {isFacebook && showBackgroundPicker && postType === 'Feed' && (
-                    <div className="bg-gray-50 border-t border-gray-100 p-3 animate-in slide-in-from-top-2">
-                        <div className="flex items-center gap-2 overflow-x-auto pb-1 hide-scrollbar">
-                            {/* Reset Button */}
-                            <button 
-                                onClick={() => setSelectedBackground('none')}
-                                className={`w-8 h-8 rounded-lg border flex-shrink-0 flex items-center justify-center bg-white transition-all ${selectedBackground === 'none' ? 'ring-2 ring-indigo-500 border-transparent' : 'border-gray-300'}`}
-                                title="No Background"
-                            >
-                                <div className="w-full h-full rounded-lg flex items-center justify-center">
-                                   <div className="w-4 h-4 border border-gray-300 bg-white"></div>
-                                </div>
-                            </button>
-                            
-                            {/* Color Options */}
-                            {BACKGROUNDS.filter(b => b.id !== 'none' && b.id !== 'simple-1').map((bg) => (
-                                <button
-                                    key={bg.id}
-                                    onClick={() => setSelectedBackground(bg.id)}
-                                    className={`w-8 h-8 rounded-lg flex-shrink-0 transition-all transform hover:scale-110 ${bg.class} ${
-                                        selectedBackground === bg.id ? 'ring-2 ring-indigo-500 ring-offset-2 scale-110' : ''
-                                    }`}
-                                    title={bg.label}
-                                />
-                            ))}
-                            
-                        </div>
-                    </div>
-                )}
-              </div>
-
-              {/* AI Prompt Input (Conditional) */}
-              {showAiPrompt && (
-                <div className="bg-indigo-50 p-4 rounded-xl border border-indigo-100 flex items-center gap-2 animate-in fade-in">
-                    <input 
-                      type="text" 
-                      value={promptTopic}
-                      onChange={(e) => setPromptTopic(e.target.value)}
-                      className="flex-1 text-sm border-gray-200 rounded-lg px-3 py-2 focus:border-indigo-300 focus:ring focus:ring-indigo-200 focus:ring-opacity-50"
-                      placeholder="What should this post be about?"
-                    />
-                    <Button size="sm" onClick={handleGenerate} isLoading={isGenerating}>
-                      Generate
-                    </Button>
-                </div>
+              ) : (
+                <textarea
+                  value={content}
+                  onChange={(e) => setContent(e.target.value)}
+                  placeholder="What's on your mind?"
+                  className="w-full bg-white text-gray-800 text-sm h-40 p-4 resize-none outline-none"
+                />
               )}
 
-              {/* Media Section */}
-              {selectedBackground === 'none' ? (
-                  <div
-                    onClick={() => fileInputRef.current?.click()}
-                    className="group border-2 border-dashed border-gray-200 rounded-xl p-6 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer"
-                  >
-                    <div className="bg-gray-100 p-3 rounded-full mb-3 group-hover:scale-110 transition-transform">
-                      <ImageIcon size={24} className="text-gray-500" />
-                    </div>
-                    {mediaFile ? (
-                      <span className="text-sm font-medium text-indigo-600">{mediaFile.name}</span>
-                    ) : (
-                      <>
-                        <span className="text-sm font-medium text-gray-600">Add Photos or Video</span>
-                        <span className="text-xs text-gray-400 mt-1">or drag and drop</span>
-                      </>
+              {/* Toolbar */}
+              <div className="bg-white border-t border-gray-100 px-2 py-1.5 flex items-center justify-between relative z-10">
+                <div className="flex items-center gap-1">
+                  <div className="relative">
+                    <button type="button" title="Insert emoji"
+                      onClick={() => setShowEmojiPicker(prev => !prev)}
+                      className="p-1.5 text-gray-400 hover:text-gray-600 hover:bg-gray-100 rounded-lg transition-colors">
+                      <Smile size={16} />
+                    </button>
+                    {showEmojiPicker && (
+                      <div className="absolute bottom-full left-0 mb-2 bg-white border border-gray-200 rounded-xl shadow-lg p-3 z-50 w-56">
+                        <div className="grid grid-cols-10 gap-0.5">
+                          {COMMON_EMOJIS.map(emoji => (
+                            <button type="button" key={emoji} title={emoji} onClick={() => insertEmoji(emoji)}
+                              className="w-7 h-7 flex items-center justify-center hover:bg-gray-100 rounded text-base">
+                              {emoji}
+                            </button>
+                          ))}
+                        </div>
+                      </div>
                     )}
                   </div>
-              ) : (
-                  <div className={`border rounded-lg p-3 flex items-start gap-3 text-sm transition-colors ${isOverLimit ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
-                      <AlertCircle size={16} className="mt-0.5 flex-shrink-0" />
-                      <div>
-                          <p className="font-semibold">{isOverLimit ? 'Character limit exceeded' : 'Media disabled'}</p>
-                          <p className={`text-xs ${isOverLimit ? 'text-red-700' : 'text-amber-700/80'}`}>
-                              {isOverLimit 
-                                ? `Please reduce text to ${FB_BG_CHAR_LIMIT} characters or remove the background to post.`
-                                : 'Colored backgrounds are only available for text-only posts on Facebook.'}
-                          </p>
-                      </div>
-                  </div>
-              )}
-             
-             {/* Facebook Settings Accordion */}
-             {isFacebook && (
-                 <div className="border border-gray-200 rounded-xl overflow-hidden">
-                     <button
-                        type="button"
-                        onClick={() => setIsSettingsOpen(!isSettingsOpen)}
-                        className="w-full flex items-center justify-between p-4 bg-gray-50 hover:bg-gray-100 transition-colors text-sm font-semibold text-gray-700"
-                     >
-                         <span className="flex items-center gap-2">
-                             <span className="w-5 h-5 bg-[#1877F2] text-white rounded flex items-center justify-center text-[10px] font-bold">f</span>
-                             Facebook Settings
-                         </span>
-                         {isSettingsOpen ? <ChevronUp size={16} /> : <ChevronDown size={16} />}
-                     </button>
-                     
-                     {isSettingsOpen && (
-                         <div className="p-4 bg-white border-t border-gray-200 space-y-4 animate-in slide-in-from-top-1">
-                             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                                 <div>
-                                     <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Post Type</label>
-                                     <div className="relative">
-                                         <select
-                                            title="Post Type"
-                                            value={postType}
-                                            onChange={(e) => {
-                                                setPostType(e.target.value as any);
-                                                if(e.target.value !== 'Feed') setSelectedBackground('none');
-                                            }}
-                                            className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-8 text-sm focus:ring-2 focus:ring-indigo-100 focus:border-indigo-300 outline-none"
-                                         >
-                                             <option value="Feed">Feed Post</option>
-                                             <option value="Reel">Reel</option>
-                                             <option value="Story">Story</option>
-                                         </select>
-                                         <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                     </div>
-                                     <p className="text-[10px] text-gray-400 mt-1.5">
-                                         {postType === 'Feed' ? 'Up to 10 images or a video (not both).' : 
-                                          postType === 'Reel' ? 'Only single video allowed.' : 
-                                          'Single or up to 10 images, videos, or a mix.'}
-                                     </p>
-                                 </div>
-                                 
-                                 <div>
-                                      <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide">Who can comment?</label>
-                                      <div className="relative">
-                                         <select title="Who can comment?" className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-4 py-2.5 pr-8 text-sm text-gray-500 focus:ring-2 focus:ring-indigo-100 outline-none" disabled>
-                                             <option>Public</option>
-                                             <option>Followers only</option>
-                                         </select>
-                                          <ChevronDown size={14} className="absolute right-3 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
-                                     </div>
-                                 </div>
-                             </div>
-                         </div>
-                     )}
-                 </div>
-             )}
 
-              {/* Scheduling Section */}
-              <div className="grid grid-cols-2 gap-4 pt-2">
+                  {isFacebook && postType === 'Feed' && (
+                    <div className="relative group">
+                      <button type="button" onClick={() => {
+                          if (showBackgroundPicker) setSelectedBackground('none');
+                          setShowBackgroundPicker(!showBackgroundPicker);
+                        }}
+                        title="Facebook Text Background"
+                        className={`p-1.5 rounded-lg transition-colors ${showBackgroundPicker || isColoredBackground ? 'bg-indigo-50' : 'text-gray-400 hover:text-gray-600 hover:bg-gray-100'}`}>
+                        <Type size={16} className={showBackgroundPicker || isColoredBackground ? 'text-indigo-600' : ''} />
+                      </button>
+                      <div className="absolute bottom-full left-0 mb-2 w-52 bg-gray-900 text-white rounded-lg p-3 hidden group-hover:block z-50 pointer-events-none shadow-xl">
+                        <p className="text-[11px] font-semibold mb-1.5">Facebook Text Background</p>
+                        <p className="text-[10px] text-gray-300 leading-relaxed">· Exclusive to Facebook Pages</p>
+                        <p className="text-[10px] text-gray-300 leading-relaxed">· Limited to Feed posts (text only)</p>
+                      </div>
+                    </div>
+                  )}
+
+                  <button type="button" onClick={() => setShowAiPrompt(!showAiPrompt)}
+                    className={`ml-1 flex items-center gap-1 text-xs font-medium px-2 py-1 rounded-lg transition-colors ${showAiPrompt ? 'bg-indigo-100 text-indigo-700' : 'bg-indigo-50 text-indigo-600 hover:bg-indigo-100'}`}>
+                    <Sparkles size={13} />
+                    AI Assist
+                  </button>
+                </div>
+                <span className={`text-xs font-medium ${isOverLimit ? 'text-red-600 font-bold' : 'text-gray-400'}`}>
+                  {content.length}{isColoredBackground ? ` / ${FB_BG_CHAR_LIMIT}` : ''} chars
+                </span>
+              </div>
+
+              {/* Color Picker */}
+              {isFacebook && showBackgroundPicker && postType === 'Feed' && (
+                <div className="bg-gray-50 border-t border-gray-100 p-2.5">
+                  <div className="flex items-center gap-1.5 overflow-x-auto hide-scrollbar">
+                    <button type="button" onClick={() => setSelectedBackground('none')}
+                      className={`w-5 h-5 rounded-md border flex-shrink-0 flex items-center justify-center bg-white transition-all ${selectedBackground === 'none' ? 'ring-2 ring-indigo-500 border-transparent' : 'border-gray-300'}`}
+                      title="No Background">
+                      <div className="w-2.5 h-2.5 border border-gray-300 bg-white" />
+                    </button>
+                    {BACKGROUNDS.filter(b => b.id !== 'none' && b.id !== 'simple-1').map((bg) => (
+                      <button type="button" key={bg.id} onClick={() => setSelectedBackground(bg.id)}
+                        className={`w-5 h-5 rounded-md flex-shrink-0 transition-all hover:scale-110 ${bg.class} ${selectedBackground === bg.id ? 'ring-2 ring-indigo-500 ring-offset-1 scale-110' : ''}`}
+                        title={bg.label} />
+                    ))}
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* AI Prompt */}
+            {showAiPrompt && (
+              <div className="bg-indigo-50 p-3 rounded-xl border border-indigo-100 flex items-center gap-2">
+                <input type="text" value={promptTopic} onChange={(e) => setPromptTopic(e.target.value)}
+                  className="flex-1 text-sm border border-gray-200 rounded-lg px-3 py-2 focus:ring-2 focus:ring-indigo-100 outline-none bg-white"
+                  placeholder="What should this post be about?" />
+                <Button size="sm" onClick={handleGenerate} isLoading={isGenerating}>Generate</Button>
+              </div>
+            )}
+          </div>
+
+          {/* RIGHT: Settings panel */}
+          <div className="w-72 flex-shrink-0 flex flex-col overflow-y-auto custom-scrollbar p-5 gap-4 bg-gray-50/50">
+
+            {/* Date & Time */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Schedule</label>
+              <div className="grid grid-cols-2 gap-2">
                 <div>
-                  <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                    <CalendarIcon size={14} /> Date
-                  </label>
-                  <input
-                    type="date"
-                    title="Post date"
-                    value={date}
-                    onChange={(e) => setDate(e.target.value)}
-                    className="w-full text-sm border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                  />
+                  <label className="block text-[10px] text-gray-500 mb-1 flex items-center gap-1"><CalendarIcon size={10} /> Date</label>
+                  <input type="date" title="Post date" value={date} onChange={(e) => setDate(e.target.value)}
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-100 outline-none" />
                 </div>
                 <div>
-                   <label className="block text-xs font-bold text-gray-500 mb-2 uppercase tracking-wide flex items-center gap-1.5">
-                    <Clock size={14} /> Time
-                  </label>
-                  <input
-                    type="time"
-                    title="Post time"
-                    value={time}
-                    onChange={(e) => setTime(e.target.value)}
-                    className="w-full text-sm border-gray-200 rounded-lg px-3 py-2.5 bg-gray-50 focus:bg-white focus:ring-2 focus:ring-indigo-100 outline-none transition-all"
-                  />
+                  <label className="block text-[10px] text-gray-500 mb-1 flex items-center gap-1"><Clock size={10} /> Time</label>
+                  <input type="time" title="Post time" value={time} onChange={(e) => setTime(e.target.value)}
+                    className="w-full text-xs border border-gray-200 rounded-lg px-2 py-2 bg-white focus:ring-2 focus:ring-indigo-100 outline-none" />
                 </div>
               </div>
+            </div>
+
+            {/* Media */}
+            <div>
+              <label className="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase tracking-wide">Media</label>
+              {selectedBackground !== 'none' ? (
+                <div className={`border rounded-lg p-2.5 flex items-start gap-2 text-xs ${isOverLimit ? 'bg-red-50 border-red-200 text-red-800' : 'bg-amber-50 border-amber-100 text-amber-800'}`}>
+                  <AlertCircle size={13} className="mt-0.5 flex-shrink-0" />
+                  <div>
+                    <p className="font-semibold">{isOverLimit ? 'Limit exceeded' : 'Media disabled'}</p>
+                    <p className={`text-[10px] mt-0.5 ${isOverLimit ? 'text-red-700' : 'text-amber-700/80'}`}>
+                      {isOverLimit ? `Max ${FB_BG_CHAR_LIMIT} chars with background.` : 'Text-only when using colored backgrounds.'}
+                    </p>
+                  </div>
+                </div>
+              ) : mediaFile && mediaPreviewUrl ? (
+                <div className="flex flex-col gap-1.5">
+                  <div className={`relative rounded-xl overflow-hidden border border-gray-200 group ${
+                    postType === 'Feed' ? 'w-full aspect-[4/5]' : 'w-44 mx-auto aspect-[9/16]'
+                  }`}>
+                    {mediaFile.type.startsWith('video/') ? (
+                      <video src={mediaPreviewUrl} className="w-full h-full object-cover" muted />
+                    ) : (
+                      <img src={mediaPreviewUrl} alt="Media preview" className="w-full h-full object-cover" />
+                    )}
+                    <div className="absolute top-2 left-2 bg-black/60 text-white text-[9px] font-semibold px-1.5 py-0.5 rounded-md backdrop-blur-sm">
+                      {postType === 'Feed' ? '4:5' : '9:16'} · {postType}
+                    </div>
+                    <div className="absolute inset-0 bg-black/0 group-hover:bg-black/30 transition-colors">
+                      <div className="absolute bottom-2 right-2 flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <button type="button" title="Change media" onClick={() => fileInputRef.current?.click()}
+                          className="bg-white/90 hover:bg-white text-gray-700 rounded-lg p-1.5 shadow-sm">
+                          <ImageIcon size={12} />
+                        </button>
+                        <button type="button" title="Remove media" onClick={() => setMediaFile(null)}
+                          className="bg-white/90 hover:bg-white text-red-500 rounded-lg p-1.5 shadow-sm">
+                          <X size={12} />
+                        </button>
+                      </div>
+                    </div>
+                  </div>
+                  <p className="text-[10px] text-gray-400 text-center truncate px-1">{mediaFile.name}</p>
+                </div>
+              ) : (
+                <div onClick={() => fileInputRef.current?.click()}
+                  className="group border-2 border-dashed border-gray-200 rounded-xl p-4 flex flex-col items-center justify-center text-gray-400 hover:bg-gray-50 hover:border-gray-300 transition-all cursor-pointer">
+                  <div className="bg-gray-100 p-2 rounded-full mb-2 group-hover:scale-110 transition-transform">
+                    <ImageIcon size={18} className="text-gray-500" />
+                  </div>
+                  <span className="text-xs text-gray-500">Add Photos or Video</span>
+                </div>
+              )}
+            </div>
+
+            {/* Facebook Settings */}
+            {isFacebook && (
+              <div>
+                <label className="block text-[10px] font-bold text-gray-400 mb-1.5 uppercase tracking-wide flex items-center gap-1.5">
+                  <span className="w-4 h-4 bg-[#1877F2] text-white rounded flex items-center justify-center text-[9px] font-bold">f</span>
+                  Facebook Settings
+                </label>
+                <div className="flex flex-col gap-3">
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 uppercase tracking-wide">Post Type</label>
+                    <div className="relative">
+                      <select title="Post Type" value={postType}
+                        onChange={(e) => { setPostType(e.target.value as any); if (e.target.value !== 'Feed') setSelectedBackground('none'); }}
+                        className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-3 py-2 pr-7 text-xs focus:ring-2 focus:ring-indigo-100 outline-none">
+                        <option value="Feed">Feed Post</option>
+                        <option value="Reel">Reel</option>
+                        <option value="Story">Story</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                  <div>
+                    <label className="block text-[10px] text-gray-500 mb-1 uppercase tracking-wide">Who Can Comment?</label>
+                    <div className="relative">
+                      <select title="Who can comment?" className="w-full appearance-none bg-white border border-gray-200 rounded-lg px-3 py-2 pr-7 text-xs text-gray-400 outline-none" disabled>
+                        <option>Public</option>
+                        <option>Followers only</option>
+                      </select>
+                      <ChevronDown size={12} className="absolute right-2.5 top-1/2 -translate-y-1/2 text-gray-400 pointer-events-none" />
+                    </div>
+                  </div>
+                </div>
+              </div>
+            )}
           </div>
-          <input
-            type="file"
-            title="Upload photo or video"
-            ref={fileInputRef}
-            onChange={(e) => { if (e.target.files?.[0]) setMediaFile(e.target.files[0]); }}
-            accept="image/*,video/*"
-            className="hidden"
-          />
         </div>
 
         {/* Footer */}
-        <div className="p-4 border-t border-gray-100 flex justify-end gap-3 bg-gray-50">
+        <div className="px-5 py-3 border-t border-gray-100 flex justify-end gap-3 bg-white flex-shrink-0">
           <Button variant="secondary" onClick={onClose}>Cancel</Button>
           <Button onClick={handleSave} disabled={!content || isOverLimit}>
-              {date ? 'Schedule Post' : 'Post Now'}
+            {editingPost ? 'Save Changes' : (date ? 'Schedule Post' : 'Post Now')}
           </Button>
         </div>
+
+        <input type="file" title="Upload photo or video" ref={fileInputRef}
+          onChange={(e) => { if (e.target.files?.[0]) setMediaFile(e.target.files[0]); }}
+          accept="image/*,video/*" className="hidden" />
       </div>
     </div>
   );

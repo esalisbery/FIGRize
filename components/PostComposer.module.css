@@ -1,0 +1,29 @@
+.topHeader {
+  background: rgba(13, 20, 36, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(120, 140, 180, 0.14);
+}
+
+.darkSchemeInput {
+  color-scheme: dark;
+}
+
+.mediaDropzone {
+  background: radial-gradient(600px 300px at 50% 50%, rgba(255, 140, 66, 0.04), transparent 60%);
+}
+
+.coloredTextarea {
+  padding: 0;
+  color: #ffffff;
+  caret-color: #ffffff;
+}
+
+.toastSuccess {
+  background: rgba(62, 193, 166, 0.12);
+  border-bottom: 1px solid rgba(62, 193, 166, 0.25);
+}
+
+.toastError {
+  background: rgba(255, 107, 107, 0.1);
+  border-bottom: 1px solid rgba(255, 107, 107, 0.25);
+}

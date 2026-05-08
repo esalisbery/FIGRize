@@ -1,0 +1,12 @@
+.glassHeader {
+  background: rgba(13, 20, 36, 0.85);
+  backdrop-filter: blur(8px);
+  border-bottom: 1px solid rgba(120, 140, 180, 0.14);
+}
+
+.glassSubHeader {
+  background: rgba(13, 20, 36, 0.85);
+  backdrop-filter: blur(8px);
+  border-top: none;
+  border-bottom: 1px solid rgba(120, 140, 180, 0.14);
+}

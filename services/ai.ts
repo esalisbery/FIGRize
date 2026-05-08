@@ -30,6 +30,27 @@ export const generatePostContent = async (
   }
 };
 
+export const generateHashtags = async (
+  content: string,
+  platform: Platform
+): Promise<string[]> => {
+  try {
+    const prompt = `
+      Generate 8 relevant hashtags for this ${platform} social media post: "${content}".
+      Return ONLY a comma-separated list of hashtags starting with #, no extra text.
+      Example format: #Marketing, #SocialMedia, #Business
+    `;
+    const response = await ai.models.generateContent({
+      model: modelId,
+      contents: prompt,
+    });
+    const raw = response.text?.trim() || '';
+    return raw.split(',').map(t => t.trim()).filter(t => t.startsWith('#'));
+  } catch {
+    return [];
+  }
+};
+
 export const optimizePostTime = async (
   content: string,
   platform: Platform

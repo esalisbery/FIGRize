@@ -11,6 +11,8 @@ export interface SocialPost {
   platform: Platform;
   mediaUrl?: string;
   isDraft: boolean;
+  fbPostId?: string;      // Set when successfully published to Facebook
+  publishError?: string;  // Set when publishing failed
 }
 
 export interface CalendarTimeSlot {
@@ -28,3 +30,11 @@ export interface ConnectedAccount {
 }
 
 export type ViewMode = 'week' | 'month';
+
+export interface FacebookPage {
+  id: string;
+  name: string;
+  access_token: string;
+  category: string;
+  picture?: { data: { url: string } };
+}
