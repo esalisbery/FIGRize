@@ -1,7 +1,7 @@
 import React, { useMemo } from 'react';
 import { SocialPost, Platform } from '../types';
 import { format, addDays, startOfWeek, isSameDay } from 'date-fns';
-import { Image, Video, Linkedin, Instagram, Facebook } from 'lucide-react';
+import { Image, Instagram, Facebook } from 'lucide-react';
 
 interface CalendarGridProps {
   currentDate: Date;
@@ -27,14 +27,21 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
     return DAYS.map(day => addDays(startDate, day));
   }, [startDate]);
 
-  // Mock "Best time" heat map intensity
-  const getIntensity = (dayIndex: number, hour: number) => {
-    // Simulate Metricool's heat map logic
-    // Higher intensity around 9am, 12pm, 6pm
-    if ((hour >= 9 && hour <= 11) || (hour >= 17 && hour <= 20)) return 0.2 + (Math.random() * 0.3); // High traffic
-    if (hour >= 1 && hour <= 5) return 0; // Sleeping time
-    return 0.05 + (Math.random() * 0.1);
-  };
+  const heatMap = useMemo(() => {
+    const map: Record<string, number> = {};
+    DAYS.forEach(dayIndex => {
+      HOURS.forEach(hour => {
+        if ((hour >= 9 && hour <= 11) || (hour >= 17 && hour <= 20)) {
+          map[`${dayIndex}-${hour}`] = 0.2 + Math.random() * 0.3;
+        } else if (hour >= 1 && hour <= 5) {
+          map[`${dayIndex}-${hour}`] = 0;
+        } else {
+          map[`${dayIndex}-${hour}`] = 0.05 + Math.random() * 0.1;
+        }
+      });
+    });
+    return map;
+  }, []);
 
   const getPlatformIcon = (platform: Platform) => {
     switch(platform) {
@@ -90,12 +97,11 @@ export const CalendarGrid: React.FC<CalendarGridProps> = ({
             <div key={dayIndex} className="flex-1 border-r border-gray-100 last:border-r-0 relative">
               {/* Hourly Slots background */}
               {HOURS.map(hour => {
-                const opacity = getIntensity(dayIndex, hour);
                 return (
                   <div
                     key={hour}
                     className="h-[60px] border-b border-gray-100 w-full cursor-pointer transition-colors hover:bg-indigo-50/50 group relative"
-                    style={{ backgroundColor: `rgba(235, 230, 255, ${opacity})` }}
+                    style={{ backgroundColor: `rgba(235, 230, 255, ${heatMap[`${dayIndex}-${hour}`] || 0})` }}
                     onClick={() => onSlotClick(dayDate, hour)}
                   >
                     {/* Hover + Button */}
