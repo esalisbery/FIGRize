@@ -233,7 +233,6 @@ const App: React.FC = () => {
         onSave={handleSavePost}
         initialDate={selectedSlot?.date}
         initialPlatform={Platform.Facebook}
-        // @ts-ignore
         editingPost={editingPost}
       />
       
