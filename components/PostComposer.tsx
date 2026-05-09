@@ -9,6 +9,7 @@ import { generatePostContent, generateHashtags } from '../services/ai';
 import { Button } from './Button';
 import { PostPreviewCard } from './PostPreviewCard';
 import styles from './PostComposer.module.css';
+import { CLOUD_URL } from '../constants';
 
 const BACKGROUNDS = [
   { id: 'none',   class: 'bg-white',                                          label: 'None' },
@@ -240,7 +241,21 @@ export const PostComposer: React.FC<PostComposerProps> = ({
   });
 
   const handleSave = () => {
-    onSave(buildPost());
+    const post = buildPost();
+    onSave(post);
+    // Sync to cloud 24/7 scheduler
+    fetch(`${CLOUD_URL}/posts`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        id:          post.id,
+        content:     post.content,
+        platform:    post.platform,
+        pageId:      connectedPages[0]?.id ?? null,
+        scheduledAt: post.date instanceof Date ? post.date.toISOString() : post.date,
+        postType,
+      }),
+    }).catch(() => {});
     onBack();
   };
 

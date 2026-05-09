@@ -5,37 +5,11 @@ import { PostComposer } from './components/PostComposer';
 import { FacebookLoginPopup } from './components/FacebookLoginPopup';
 import { Platform, SocialPost, ConnectedAccount, FacebookPage } from './types';
 import { addDays, subDays, format, startOfWeek, endOfWeek } from 'date-fns';
+import { CLOUD_URL } from './constants';
 import { ChevronLeft, ChevronRight, Download, Plus, AlertCircle, CheckCircle2 } from 'lucide-react';
 import { Button } from './components/Button';
 import styles from './components/App.module.css';
 
-const INITIAL_POSTS: SocialPost[] = [
-  {
-    id: '1',
-    content: "Excited to launch our new product line! 🚀 #LaunchDay #Tech",
-    date: new Date(new Date().setHours(10, 0, 0, 0)),
-    durationMinutes: 60,
-    platform: Platform.Facebook,
-    isDraft: false,
-  },
-  {
-    id: '2',
-    content: "Behind the scenes at our annual team retreat. 🌲",
-    date: new Date(new Date().setHours(14, 30, 0, 0)),
-    durationMinutes: 90,
-    platform: Platform.Instagram,
-    mediaUrl: 'mock-image.jpg',
-    isDraft: false,
-  },
-  {
-    id: '3',
-    content: "Check out our latest case study on optimizing React performance.",
-    date: new Date(addDays(new Date(), 1).setHours(9, 0, 0, 0)),
-    durationMinutes: 60,
-    platform: Platform.Facebook,
-    isDraft: false,
-  },
-];
 
 type AppView = 'calendar' | 'composer';
 type ConnectStatus = 'idle' | 'waiting' | 'success' | 'error';
@@ -43,7 +17,7 @@ type ConnectStatus = 'idle' | 'waiting' | 'success' | 'error';
 const App: React.FC = () => {
   const [view, setView]                   = useState<AppView>('calendar');
   const [currentDate, setCurrentDate]     = useState(new Date());
-  const [posts, setPosts]                 = useState<SocialPost[]>(INITIAL_POSTS);
+  const [posts, setPosts]                 = useState<SocialPost[]>([]);
   const [isLoginPopupOpen, setIsLoginPopupOpen] = useState(false);
   const [connectedAccount, setConnectedAccount] = useState<ConnectedAccount | null>(null);
   const [connectedPages, setConnectedPages]     = useState<FacebookPage[]>([]);
@@ -52,6 +26,26 @@ const App: React.FC = () => {
   const [activePlatforms, setActivePlatforms]   = useState<Platform[]>(Object.values(Platform));
   const [selectedSlot, setSelectedSlot]   = useState<Date | null>(null);
   const [editingPost, setEditingPost]     = useState<SocialPost | null>(null);
+
+  /* ── Load scheduled posts from cloud on startup ── */
+  useEffect(() => {
+    fetch(`${CLOUD_URL}/posts`)
+      .then(r => r.json())
+      .then((cloudPosts: Array<Record<string, unknown>>) => {
+        const mapped: SocialPost[] = cloudPosts.map(p => ({
+          id:             p.id as string,
+          content:        p.content as string,
+          date:           new Date(p.scheduled_at as string),
+          durationMinutes: 60,
+          platform:       (p.platform as Platform) || Platform.Facebook,
+          isDraft:        false,
+          fbPostId:       (p.fb_post_id as string) || undefined,
+          publishError:   (p.error_message as string) || undefined,
+        }));
+        setPosts(mapped);
+      })
+      .catch(() => {});
+  }, []);
 
   /* ── Facebook OAuth IPC ── */
   const handleConnectFacebook = useCallback(() => {
@@ -65,6 +59,12 @@ const App: React.FC = () => {
       if (payload.success) {
         const pages = payload.pages;
         setConnectedPages(pages);
+        // Sync page tokens to cloud so the 24/7 scheduler can post on our behalf
+        fetch(`${CLOUD_URL}/pages`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ pages }),
+        }).catch(() => {});
         // Use the first page as the primary connected account
         const primary = pages[0];
         if (primary) {
