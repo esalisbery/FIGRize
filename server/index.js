@@ -3,7 +3,10 @@ const express = require('express')
 const cors    = require('cors')
 const cron    = require('node-cron')
 const { Pool } = require('pg')
-const fetch   = require('node-fetch')
+// Use Node 18+ global fetch/FormData/Blob (from undici). The previous
+// `require('node-fetch')` was v2, which does NOT export FormData and is
+// incompatible with the undici FormData passed as a body.
+// const fetch = require('node-fetch')
 
 const app  = express()
 const pool = new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
@@ -120,13 +123,14 @@ async function publishPost(post) {
   if (!page) throw new Error(`Page ${post.page_id} not found`)
 
   if (post.image_base64) {
-    // Post as image (colored background)
+    // Post as image. Node 18+ provides global FormData / Blob from undici,
+    // so we use those directly — node-fetch@2 does NOT export FormData,
+    // which is what bit us before ("FormData is not a constructor").
     const base64Raw   = post.image_base64.replace(/^data:image\/\w+;base64,/, '')
     const imageBuffer = Buffer.from(base64Raw, 'base64')
-    const { FormData, Blob } = await import('node-fetch')
     const formData = new FormData()
     formData.append('source', new Blob([imageBuffer], { type: 'image/jpeg' }), 'post.jpg')
-    formData.append('caption', post.content)
+    formData.append('caption', post.content || '')
     formData.append('access_token', page.access_token)
     const r = await fetch(`https://graph.facebook.com/v20.0/${page.id}/photos`, { method: 'POST', body: formData })
     return r.json()
